@@ -177,7 +177,11 @@ public final class TreeSitterClient: HighlightProviding {
             executor.cancelAll(below: .reset) // Cancel all edits, add it to the pending edit queue
             executor.execAsync(
                 priority: .edit,
-                operation: { completion(.success(operation())) },
+                operation: {
+                    let result = operation()
+                    // `completion` is @MainActor; this closure runs on the executor's thread.
+                    DispatchQueue.main.async { completion(.success(result)) }
+                },
                 onCancel: { [weak self] in
                     self?.pendingEdits.mutate { edits in
                         edits.append(edit)

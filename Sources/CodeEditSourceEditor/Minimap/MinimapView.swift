@@ -320,7 +320,7 @@ public class MinimapView: FlippedNSView {
     ///
     /// - Parameter theme: The selected theme.
     public func setTheme(_ theme: EditorTheme) {
-        let isLightMode = theme.background.brightnessComponent > 0.5
+        let isLightMode = (theme.background.usingColorSpace(.deviceRGB)?.brightnessComponent ?? 0.0) > 0.5
         documentVisibleView.layer?.backgroundColor = isLightMode
             ? NSColor.black.withAlphaComponent(0.065).cgColor
             : NSColor.white.withAlphaComponent(0.065).cgColor
