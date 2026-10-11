@@ -36,6 +36,23 @@ final class ForgeRegressionTests: XCTestCase {
         XCTAssertTrue(onMain)
     }
 
+    /// The suggestion window took its screen from its own frame, so once it sat off-screen (`screen == nil`)
+    /// positioning bailed out and every later completion opened off-screen (Forge E0, FD3).
+    @MainActor
+    func test_offScreenSuggestionWindowIsBroughtBackToTheCursor() throws {
+        let screen = try XCTUnwrap(NSScreen.main).visibleFrame
+        let controller = SuggestionController()
+        let window = try XCTUnwrap(controller.window)
+        window.setFrame(NSRect(x: screen.minX + 100, y: screen.minY - 5_000, width: 300, height: 200), display: false)
+        XCTAssertNil(window.screen)
+
+        let cursor = NSRect(x: screen.midX, y: screen.midY, width: 1, height: 16)
+        controller.constrainWindowToScreenEdges(cursorRect: cursor, font: .monospacedSystemFont(ofSize: 12, weight: .regular))
+
+        XCTAssertTrue(screen.contains(window.frame), "\(window.frame) is not on \(screen)")
+        XCTAssertEqual(window.frame.maxY, cursor.minY, accuracy: 0.5, "drops down from the cursor")
+    }
+
     /// `MinimapView.setTheme` read `brightnessComponent` straight off the background, which throws for a
     /// gray-colourspace colour such as `NSColor.clear` (a transparent editor over a glass window).
     @MainActor
