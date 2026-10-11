@@ -10,8 +10,10 @@ import AppKit
 extension SuggestionController {
     /// Will constrain the window's frame to be within the visible screen
     public func constrainWindowToScreenEdges(cursorRect: NSRect, font: NSFont) {
-        guard let window = self.window,
-              let screenFrame = window.screen?.visibleFrame else {
+        // The screen under the cursor, not the window's: a window left off-screen has no `screen`, and bailing
+        // out then kept every later suggestion window off-screen too (Forge E0, FD3).
+        let screen = NSScreen.screens.first { $0.frame.contains(cursorRect.origin) } ?? self.window?.screen ?? NSScreen.main
+        guard let window = self.window, let screenFrame = screen?.visibleFrame else {
             return
         }
 
