@@ -88,39 +88,44 @@ extension TreeSitterClient {
         includedRange: NSRange
     ) -> [HighlightRange] {
         guard let readCallback else { return [] }
-        var ranges: [NSRange: Int] = [:]
-        return cursor
+        let captures = cursor
             .resolve(with: .init(textProvider: readCallback)) // Resolve our cursor against the query
             .flatMap { $0.captures }
-            .reversed() // SwiftTreeSitter returns captures in the reverse order of what we need to filter with.
-            .compactMap { capture in
-                let range = capture.range
-                let index = capture.index
+        return Self.resolveHighlights(captures) { range, capture in
+            readCallback(range, capture.node.pointRange)
+        }.compactMap { highlight in
+            let intersectionRange = highlight.range.intersection(includedRange) ?? .zero
+            guard intersectionRange.length > 0 else { return nil }
+            return HighlightRange(range: intersectionRange, capture: highlight.capture)
+        }
+    }
 
-                // Lower indexed captures are favored over higher, this is why we reverse it above
-                if let existingLevel = ranges[range], existingLevel <= index {
-                    return nil
-                }
-
-                guard let captureName = CaptureName.forHighlight(capture.name, text: {
-                    readCallback(
-                        NSRange(location: range.location, length: min(1, range.length)),
-                        capture.node.pointRange
-                    )
-                }) else {
-                    return nil
-                }
-
-                // Update the filter level to the current index since it's lower and a 'valid' capture
-                ranges[range] = index
-
-                // Validate range and capture name
-                let intersectionRange = range.intersection(includedRange) ?? .zero
-                guard intersectionRange.length > 0 else {
-                    return nil
-                }
-
-                return HighlightRange(range: intersectionRange, capture: captureName)
+    /// Picks exactly one capture per range: the lowest capture index whose name maps to a highlight
+    /// (``CaptureName/forHighlight(_:text:)``). Unmapped captures never win, so the next-best one does.
+    ///
+    /// Capture indices are the query's capture-name ids, in order of first appearance in `highlights.scm`.
+    /// - Parameters:
+    ///   - captures: The resolved captures, in the order SwiftTreeSitter returns them.
+    ///   - read: Reads text for a range of a capture (only the first character is asked for).
+    /// - Returns: One highlight per range, in reverse capture order (the order highlights were always applied in).
+    static func resolveHighlights(
+        _ captures: [QueryCapture],
+        read: (NSRange, QueryCapture) -> String?
+    ) -> [HighlightRange] {
+        let captures = Array(captures.reversed())
+        var winners: [NSRange: (index: Int, capture: CaptureName)] = [:]
+        for capture in captures {
+            let range = capture.range
+            if let winner = winners[range], winner.index <= capture.index { continue }
+            let name = CaptureName.forHighlight(capture.name) {
+                read(NSRange(location: range.location, length: min(1, range.length)), capture)
             }
+            if let name { winners[range] = (capture.index, name) }
+        }
+        return captures.compactMap { capture in
+            guard let winner = winners[capture.range], winner.index == capture.index else { return nil }
+            winners[capture.range] = nil // emit each range once
+            return HighlightRange(range: capture.range, capture: winner.capture)
+        }
     }
 }

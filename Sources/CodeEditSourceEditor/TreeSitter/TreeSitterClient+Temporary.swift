@@ -27,31 +27,12 @@ extension TreeSitterClient {
                 return nil
             }
             let queryCursor = query.execute(in: syntaxTree)
-            var ranges: [NSRange: Int] = [:]
-            let highlights: [HighlightRange] = queryCursor
+            let captures = queryCursor
                 .resolve(with: .init(string: string))
                 .flatMap { $0.captures }
-                .reversed() // SwiftTreeSitter returns captures in the reverse order of what we need to filter with.
-                .compactMap { capture in
-                    let range = capture.range
-                    let index = capture.index
-
-                    // Lower indexed captures are favored over higher, this is why we reverse it above
-                    if let existingLevel = ranges[range], existingLevel <= index {
-                        return nil
-                    }
-
-                    guard let captureName = CaptureName.forHighlight(capture.name, text: {
-                        (string as NSString).substring(with: range)
-                    }) else {
-                        return nil
-                    }
-
-                    // Update the filter level to the current index since it's lower and a 'valid' capture
-                    ranges[range] = index
-
-                    return HighlightRange(range: range, capture: captureName)
-                }
+            let highlights = resolveHighlights(captures) { range, _ in
+                (string as NSString).substring(with: range)
+            }
 
             let string = NSMutableAttributedString(string: string)
 
