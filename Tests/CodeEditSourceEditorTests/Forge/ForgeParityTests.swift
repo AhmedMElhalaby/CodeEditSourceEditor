@@ -26,12 +26,13 @@ final class ForgeParityTests: XCTestCase {
         XCTAssertEqual(theme.colorFor(.variable), theme.variables.color)
     }
 
-    /// FP20: Swift calls stay unhighlighted unless `highlightsCalls` is on; then `HStack(...)` is a type and
-    /// `.padding()` a call.
+    /// FP20: Swift calls are only highlighted when `highlightsCalls` is on: then `HStack(...)` is a type and
+    /// `.padding()` a call. Off, `HStack` stays plain and `.padding` falls back to a member (`properties`).
     func test_callsAreHighlightedOnlyWhenOptedIn() throws {
         let source = "HStack { Text(\"a\").padding() }"
         var theme = Mock.theme()
         theme.functionCalls = .init(color: .systemBlue)
+        theme.properties = .init(color: .systemBrown)
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         func color(_ word: String) throws -> NSColor? {
             let string = try XCTUnwrap(
@@ -41,7 +42,7 @@ final class ForgeParityTests: XCTestCase {
         }
 
         XCTAssertNil(try color("HStack"))
-        XCTAssertNil(try color("padding"))
+        XCTAssertEqual(try color("padding"), .systemBrown)
 
         TreeSitterClient.Constants.highlightsCalls = true
         XCTAssertEqual(try color("HStack"), theme.types.color)
@@ -49,10 +50,11 @@ final class ForgeParityTests: XCTestCase {
         XCTAssertEqual(try color("padding"), .systemBlue)
     }
 
-    /// FP20: the editor's own highlight path (text read back from the text view) makes the same call.
+    /// FP20: the editor's own highlight path (text read back from the text view) makes the same call, and an
+    /// attribute's name is drawn with the `attributes` slot (`typeAlternate`).
     @MainActor
     func test_editorHighlightsCallsWhenOptedIn() {
-        let source = "HStack { x.padding() }"
+        let source = "@Environment(\\.skin) var skin\nHStack { x.padding().lineLimit(1) }"
         let textView = Mock.textView()
         textView.setText(source)
         let client = Mock.treeSitterClient(forceSync: true)
@@ -63,11 +65,40 @@ final class ForgeParityTests: XCTestCase {
                 .first { $0.range == range }?.capture
         }
 
+        XCTAssertEqual(capture("Environment"), .typeAlternate)
         XCTAssertNil(capture("HStack"))
-        XCTAssertNil(capture("padding"))
+        XCTAssertEqual(capture("padding"), .property)
+        XCTAssertEqual(capture("lineLimit"), .property)
         TreeSitterClient.Constants.highlightsCalls = true
+        XCTAssertEqual(capture("Environment"), .typeAlternate)
         XCTAssertEqual(capture("HStack"), .type)
         XCTAssertEqual(capture("padding"), .functionCall)
+        XCTAssertEqual(capture("lineLimit"), .functionCall)
+    }
+
+    /// Two mapped captures on one range (`padding` is both `@property` and `@function.call`) emitted two
+    /// highlights, so its colour depended on which was applied last. Exactly one now: the lowest capture index
+    /// that maps, whichever order SwiftTreeSitter returns them in.
+    @MainActor
+    func test_eachRangeGetsExactlyOneHighlight() {
+        let source = """
+        @Environment(\\.skin) private var skin
+        var body: some View {
+            HStack(spacing: skin.size.s8) { Text(x.title).lineLimit(1) }
+                .padding(.horizontal, skin.size.s8)
+                .background { Capsule().glassEffect(.regular) }
+        }
+        """
+        let textView = Mock.textView()
+        textView.setText(source)
+        let client = Mock.treeSitterClient(forceSync: true)
+        client.setUp(textView: textView, codeLanguage: .swift)
+        for calls in [false, true] {
+            TreeSitterClient.Constants.highlightsCalls = calls
+            let highlights = client.queryHighlightsForRange(range: NSRange(location: 0, length: source.utf16.count))
+            XCTAssertFalse(highlights.isEmpty)
+            XCTAssertEqual(Set(highlights.map(\.range)).count, highlights.count, "calls: \(calls)")
+        }
     }
 
     /// FP21: an opt-in arrows style puts a disclosure arrow on each fold's first line instead of the ribbon.

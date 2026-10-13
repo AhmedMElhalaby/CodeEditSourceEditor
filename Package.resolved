@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AhmedMElhalaby/CodeEditLanguages.git",
       "state" : {
-        "revision" : "b3e53b6330950845668bee062ba89941033142c7",
-        "version" : "0.1.20-forge.1"
+        "revision" : "bc1d15110f91b1dc725d2c24498a73e9a9b9d815",
+        "version" : "0.1.20-forge.2"
       }
     },
     {
