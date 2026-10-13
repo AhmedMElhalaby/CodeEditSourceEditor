@@ -29,6 +29,16 @@ extension LineFoldRibbonView {
         context.saveGState()
         context.clip(to: dirtyRect)
 
+        if style == .arrows {
+            drawFoldArrows(
+                forTextRange: rangeStart.range.location..<rangeEnd.range.upperBound,
+                in: context,
+                using: layoutManager
+            )
+            context.restoreGState()
+            return
+        }
+
         // Only draw folds in the requested dirty rect
         let folds = getDrawingFolds(
             forTextRange: rangeStart.range.location..<rangeEnd.range.upperBound,
@@ -57,6 +67,66 @@ extension LineFoldRibbonView {
         }
 
         context.restoreGState()
+    }
+
+    // MARK: - Fold Arrows
+
+    /// The fold each line's arrow stands for, keyed by line index: a folded fold first, else the outermost fold
+    /// starting on the line. Folds that start inside a folded fold are hidden, so they get no arrow.
+    func arrowFolds(
+        forTextRange textRange: Range<Int>,
+        using layoutManager: TextLayoutManager
+    ) -> [Int: (line: TextLineStorage<TextLine>.TextLinePosition, fold: FoldRange)] {
+        let folds = model?.getFolds(in: textRange) ?? []
+        var result: [Int: (line: TextLineStorage<TextLine>.TextLinePosition, fold: FoldRange)] = [:]
+        for fold in folds {
+            let start = fold.range.lowerBound
+            guard !folds.contains(where: { $0.isCollapsed && $0.range.lowerBound < start && $0.range.contains(start) }),
+                  let line = layoutManager.textLineForOffset(start) else {
+                continue
+            }
+            if let current = result[line.index]?.fold,
+               current.isCollapsed || (!fold.isCollapsed && current.depth <= fold.depth) {
+                continue
+            }
+            result[line.index] = (line, fold)
+        }
+        return result
+    }
+
+    /// The fold a click on `lineNumber` toggles in the arrows style: the one its arrow stands for.
+    func foldStarting(onLine lineNumber: Int, layoutManager: TextLayoutManager) -> FoldRange? {
+        guard let line = layoutManager.textLineForIndex(lineNumber) else { return nil }
+        return arrowFolds(forTextRange: line.range.intRange, using: layoutManager)[lineNumber]?.fold
+    }
+
+    /// Draws a disclosure arrow, in the line numbers' colour, on the first line of each fold: ▾ open, ▸ folded.
+    private func drawFoldArrows(
+        forTextRange textRange: Range<Int>,
+        in context: CGContext,
+        using layoutManager: TextLayoutManager
+    ) {
+        guard let color = model?.controller?.gutterView.textColor.cgColor else { return }
+        let centerX = Self.arrowsWidth / 2
+        let path = CGMutablePath()
+        for (line, fold) in arrowFolds(forTextRange: textRange, using: layoutManager).values {
+            let centerY = line.yPos + (line.data.lineFragments.first?.data.height ?? line.height) / 2
+            if fold.isCollapsed {
+                path.move(to: CGPoint(x: centerX - 1.5, y: centerY - 3.0))
+                path.addLine(to: CGPoint(x: centerX + 1.5, y: centerY))
+                path.addLine(to: CGPoint(x: centerX - 1.5, y: centerY + 3.0))
+            } else {
+                path.move(to: CGPoint(x: centerX - 3.0, y: centerY - 1.5))
+                path.addLine(to: CGPoint(x: centerX, y: centerY + 1.5))
+                path.addLine(to: CGPoint(x: centerX + 3.0, y: centerY - 1.5))
+            }
+        }
+        context.setStrokeColor(color)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        context.setLineWidth(1.3)
+        context.addPath(path)
+        context.strokePath()
     }
 
     // MARK: - Get Drawing Folds

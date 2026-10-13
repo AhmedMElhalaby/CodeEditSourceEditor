@@ -41,6 +41,13 @@ public struct EditorTheme: Equatable {
     public var strings: Attribute
     public var characters: Attribute
     public var comments: Attribute
+    /// Function and method declaration names (`function`, `method` captures). `nil` draws them as ``variables``.
+    public var functions: Attribute?
+    /// Call sites (``CaptureName/functionCall``, see ``TreeSitterClient/Constants/highlightsCalls``). `nil` draws
+    /// them as ``text``.
+    public var functionCalls: Attribute?
+    /// Properties (`property` captures). `nil` draws them as ``variables``.
+    public var properties: Attribute?
 
     public init(
         text: Attribute,
@@ -87,8 +94,10 @@ public struct EditorTheme: Equatable {
                 .keywordReturn, .keywordFunction, .repeat, .conditional, .tag:
             return keywords
         case .comment: return comments
-        case .variable, .property: return variables
-        case .function, .method: return variables
+        case .variable: return variables
+        case .property: return properties ?? variables
+        case .function, .method: return functions ?? variables
+        case .functionCall: return functionCalls ?? text
         case .number, .float: return numbers
         case .string: return strings
         case .type: return types

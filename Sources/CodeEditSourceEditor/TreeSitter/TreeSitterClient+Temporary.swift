@@ -41,7 +41,9 @@ extension TreeSitterClient {
                         return nil
                     }
 
-                    guard let captureName = CaptureName.fromString(capture.name) else {
+                    guard let captureName = CaptureName.forHighlight(capture.name, text: {
+                        (string as NSString).substring(with: range)
+                    }) else {
                         return nil
                     }
 

@@ -102,7 +102,12 @@ extension TreeSitterClient {
                     return nil
                 }
 
-                guard let captureName = CaptureName.fromString(capture.name) else {
+                guard let captureName = CaptureName.forHighlight(capture.name, text: {
+                    readCallback(
+                        NSRange(location: range.location, length: min(1, range.length)),
+                        capture.node.pointRange
+                    )
+                }) else {
                     return nil
                 }
 

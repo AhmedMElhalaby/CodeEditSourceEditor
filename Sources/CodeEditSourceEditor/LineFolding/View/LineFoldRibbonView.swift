@@ -30,6 +30,15 @@ class LineFoldRibbonView: NSView {
     }
 
     static let width: CGFloat = 7.0
+    /// The width of the column in the ``SourceEditorConfiguration/Peripherals/FoldIndicatorStyle/arrows`` style.
+    static let arrowsWidth: CGFloat = 12.0
+
+    @Invalidating(.display)
+    var style: SourceEditorConfiguration.Peripherals.FoldIndicatorStyle = .ribbon
+
+    var width: CGFloat {
+        style == .arrows ? Self.arrowsWidth : Self.width
+    }
 
     var model: LineFoldModel?
 
@@ -123,7 +132,9 @@ class LineFoldRibbonView: NSView {
         guard let layoutManager = model?.controller?.textView.layoutManager,
               event.type == .leftMouseDown,
               let lineNumber = layoutManager.textLineForPosition(clickPoint.y)?.index,
-              let fold = model?.getCachedFoldAt(lineNumber: lineNumber),
+              let fold = style == .arrows
+                ? foldStarting(onLine: lineNumber, layoutManager: layoutManager)
+                : model?.getCachedFoldAt(lineNumber: lineNumber),
               let firstLineInFold = layoutManager.textLineForOffset(fold.range.lowerBound) else {
             super.mouseDown(with: event)
             return
