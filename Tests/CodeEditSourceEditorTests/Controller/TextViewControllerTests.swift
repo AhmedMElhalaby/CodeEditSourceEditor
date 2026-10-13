@@ -273,13 +273,13 @@ final class TextViewControllerTests: XCTestCase {
 
         controller.setCursorPositions([CursorPosition(line: 1, column: 2)]) // After first opening {
         XCTAssertEqual(getEmphasisCount(), 1, "Controller created more than one layer for flash animation.")
-        let exp = expectation(description: "Test after 0.8 seconds")
-        let result = XCTWaiter.wait(for: [exp], timeout: 0.8)
-        if result == XCTWaiter.Result.timedOut {
-            XCTAssertEqual(getEmphasisCount(), 0, "Controller failed to remove emphasis after flash animation.")
-        } else {
-            XCTFail("Delay interrupted")
+        // The flash is removed by two main-queue `asyncAfter`s (0.5s + 0.1s). A fixed 0.8s wait left 0.2s of slack
+        // and flaked on a busy machine, so poll until it's gone instead.
+        let deadline = Date().addingTimeInterval(3)
+        while getEmphasisCount() > 0 && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         }
+        XCTAssertEqual(getEmphasisCount(), 0, "Controller failed to remove emphasis after flash animation.")
     }
 
     func test_findClosingPair() {
