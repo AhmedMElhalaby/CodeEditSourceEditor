@@ -69,4 +69,45 @@ final class ForgeParityTests: XCTestCase {
         XCTAssertEqual(capture("HStack"), .type)
         XCTAssertEqual(capture("padding"), .functionCall)
     }
+
+    /// FP21: an opt-in arrows style puts a disclosure arrow on each fold's first line instead of the ribbon.
+    @MainActor
+    func test_foldArrowsAreOptIn() async throws {
+        XCTAssertEqual(SourceEditorConfiguration.Peripherals().foldIndicatorStyle, .ribbon)
+        let controller = TextViewController(
+            string: "func a() {\n    if x {\n        y()\n    }\n}\n", language: .swift, configuration: Mock.config(),
+            cursorPositions: [], highlightProviders: [])
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 400), styleMask: .borderless, backing: .buffered,
+            defer: false)
+        window.contentViewController = controller
+        controller.view.layoutSubtreeIfNeeded()
+        controller.textView.layoutManager.layoutLines()
+        let gutter = try XCTUnwrap(controller.gutterView)
+        let ribbon = gutter.foldingRibbon
+        XCTAssertEqual(ribbon.width, LineFoldRibbonView.width)
+        let ribbonGutterWidth = gutter.frame.width
+
+        controller.configuration.peripherals.foldIndicatorStyle = .arrows
+        XCTAssertEqual(gutter.foldIndicatorStyle, .arrows)
+        XCTAssertEqual(ribbon.width, LineFoldRibbonView.arrowsWidth)
+        XCTAssertEqual(gutter.frame.width, ribbonGutterWidth + LineFoldRibbonView.arrowsWidth - LineFoldRibbonView.width)
+
+        let model = try XCTUnwrap(ribbon.model)
+        var updates = model.$foldCache.values.makeAsyncIterator()
+        while model.getFolds(in: 0..<controller.textView.length).count < 2 { _ = await updates.next() }
+
+        let layoutManager = controller.textView.layoutManager!
+        let all = 0..<controller.textView.length
+        XCTAssertEqual(Set(ribbon.arrowFolds(forTextRange: all, using: layoutManager).keys), [0, 1])
+        let outer = try XCTUnwrap(ribbon.foldStarting(onLine: 0, layoutManager: layoutManager))
+        XCTAssertEqual(outer.depth, 1)
+        XCTAssertNil(ribbon.foldStarting(onLine: 2, layoutManager: layoutManager), "no arrow inside a fold")
+
+        // Folding the outer fold leaves one ▸ arrow, and hides the inner fold's.
+        model.foldCache.toggleCollapse(forFold: outer)
+        let arrows = ribbon.arrowFolds(forTextRange: all, using: layoutManager)
+        XCTAssertEqual(Set(arrows.keys), [0])
+        XCTAssertEqual(arrows[0]?.fold.isCollapsed, true)
+    }
 }

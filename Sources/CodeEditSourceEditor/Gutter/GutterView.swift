@@ -81,6 +81,15 @@ public class GutterView: NSView {
         }
     }
 
+    /// How the folding ribbon draws folds.
+    public var foldIndicatorStyle: SourceEditorConfiguration.Peripherals.FoldIndicatorStyle {
+        get { foldingRibbon.style }
+        set {
+            foldingRibbon.style = newValue
+            updateWidthIfNeeded()
+        }
+    }
+
     private weak var textView: TextView?
     private weak var delegate: GutterViewDelegate?
     private var maxLineNumberWidth: CGFloat = 0
@@ -108,7 +117,7 @@ public class GutterView: NSView {
         if foldingRibbon.isHidden {
             0.0
         } else {
-            LineFoldRibbonView.width + foldingRibbonPadding
+            foldingRibbon.width + foldingRibbonPadding
         }
     }
 

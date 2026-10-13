@@ -7,6 +7,14 @@
 
 extension SourceEditorConfiguration {
     public struct Peripherals: Equatable {
+        /// How folds are drawn in the gutter.
+        public enum FoldIndicatorStyle: Equatable, Sendable {
+            /// The folding ribbon: a bar beside each fold that expands on hover.
+            case ribbon
+            /// A disclosure arrow (▾ open, ▸ folded) on the first line of each fold.
+            case arrows
+        }
+
         /// Whether to show the gutter.
         public var showGutter: Bool = true
 
@@ -18,6 +26,9 @@ extension SourceEditorConfiguration {
 
         /// Whether to show the folding ribbon. Only available if ``showGutter`` is `true`.
         public var showFoldingRibbon: Bool
+
+        /// How the folding ribbon shows folds: upstream's ribbon, or disclosure arrows on each fold's first line.
+        public var foldIndicatorStyle: FoldIndicatorStyle
 
         /// Configuration for drawing invisible characters.
         ///
@@ -34,7 +45,8 @@ extension SourceEditorConfiguration {
             showReformattingGuide: Bool = false,
             showFoldingRibbon: Bool = true,
             invisibleCharactersConfiguration: InvisibleCharactersConfiguration = .empty,
-            warningCharacters: Set<UInt16> = []
+            warningCharacters: Set<UInt16> = [],
+            foldIndicatorStyle: FoldIndicatorStyle = .ribbon
         ) {
             self.showGutter = showGutter
             self.showMinimap = showMinimap
@@ -42,6 +54,7 @@ extension SourceEditorConfiguration {
             self.showFoldingRibbon = showFoldingRibbon
             self.invisibleCharactersConfiguration = invisibleCharactersConfiguration
             self.warningCharacters = warningCharacters
+            self.foldIndicatorStyle = foldIndicatorStyle
         }
 
         @MainActor
@@ -65,6 +78,10 @@ extension SourceEditorConfiguration {
 
             if oldConfig?.showFoldingRibbon != showFoldingRibbon {
                 controller.gutterView.showFoldingRibbon = showFoldingRibbon
+            }
+
+            if oldConfig?.foldIndicatorStyle != foldIndicatorStyle {
+                controller.gutterView.foldIndicatorStyle = foldIndicatorStyle
             }
 
             if oldConfig?.invisibleCharactersConfiguration != invisibleCharactersConfiguration {
