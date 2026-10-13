@@ -40,14 +40,12 @@ class SuggestionViewController: NSViewController {
     override func loadView() {
         super.loadView()
         view.wantsLayer = true
-        view.layer?.cornerRadius = 8.5
-        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
         tintView.translatesAutoresizingMaskIntoConstraints = false
         tintView.wantsLayer = true
-        tintView.layer?.cornerRadius = 8.5
         tintView.layer?.backgroundColor = .clear
         view.addSubview(tintView)
+        applyPanelStyle(nil)
 
         configureTableView()
         configureScrollView()
@@ -144,6 +142,14 @@ class SuggestionViewController: NSViewController {
         noItemsLabel.font = controller.font
         previewView.font = controller.font
         previewView.documentationFont = controller.font
+        let style = controller.configuration.appearance.suggestionPanelStyle
+        applyPanelStyle(style)
+        if style != nil {
+            // The style's fill stands alone: no tint derived from the editor background.
+            tintView.layer?.backgroundColor = .clear
+            updateSize(using: controller)
+            return
+        }
         switch controller.systemAppearance {
         case .aqua:
             let color = controller.theme.background
@@ -164,6 +170,15 @@ class SuggestionViewController: NSViewController {
             return
         }
         updateSize(using: controller)
+    }
+
+    /// The panel's fill and corners: the style's, or the default window background when nil.
+    func applyPanelStyle(_ style: SuggestionPanelStyle?) {
+        let cornerRadius = style?.cornerRadius ?? 8.5
+        view.layer?.cornerRadius = cornerRadius
+        view.layer?.backgroundColor = (style?.background ?? NSColor.windowBackgroundColor).cgColor
+        tintView.layer?.cornerRadius = cornerRadius
+        previewView.isStyled = style != nil
     }
 
     func updateSize(using controller: TextViewController?) {
@@ -318,7 +333,9 @@ extension SuggestionViewController: NSTableViewDataSource, NSTableViewDelegate {
 
     public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         CodeSuggestionRowView { [weak self] in
-            self?.model?.activeTextView?.theme.background ?? NSColor.controlBackgroundColor
+            guard let controller = self?.model?.activeTextView else { return NSColor.controlBackgroundColor }
+            return controller.configuration.appearance.suggestionPanelStyle?.selectedRowBackground
+                ?? controller.theme.background
         }
     }
 

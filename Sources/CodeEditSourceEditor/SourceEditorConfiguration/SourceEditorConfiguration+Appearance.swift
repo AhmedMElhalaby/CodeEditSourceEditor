@@ -39,6 +39,9 @@ extension SourceEditorConfiguration {
         /// See ``BracketPairEmphasis`` for more information. Defaults to `.flash`.
         public var bracketPairEmphasis: BracketPairEmphasis? = .flash
 
+        /// How the completion panel draws. Nil keeps its default look.
+        public var suggestionPanelStyle: SuggestionPanelStyle?
+
         /// Create a new appearance configuration object.
         /// - Parameters:
         ///   - theme: The theme for syntax highlighting.
@@ -53,6 +56,7 @@ extension SourceEditorConfiguration {
         ///   - tabWidth: The visual tab width in number of spaces.
         ///   - bracketPairEmphasis: The type of highlight to use to highlight bracket pairs. See
         ///                          ``BracketPairEmphasis`` for more information. Defaults to `.flash`.
+        ///   - suggestionPanelStyle: How the completion panel draws. Nil keeps its default look.
         public init(
             theme: EditorTheme,
             useThemeBackground: Bool = true,
@@ -62,7 +66,8 @@ extension SourceEditorConfiguration {
             wrapLines: Bool,
             useSystemCursor: Bool = true,
             tabWidth: Int = 4,
-            bracketPairEmphasis: BracketPairEmphasis? = .flash
+            bracketPairEmphasis: BracketPairEmphasis? = .flash,
+            suggestionPanelStyle: SuggestionPanelStyle? = nil
         ) {
             self.theme = theme
             self.useThemeBackground = useThemeBackground
@@ -77,6 +82,7 @@ extension SourceEditorConfiguration {
             }
             self.tabWidth = tabWidth
             self.bracketPairEmphasis = bracketPairEmphasis
+            self.suggestionPanelStyle = suggestionPanelStyle
         }
 
         @MainActor

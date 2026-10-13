@@ -90,6 +90,37 @@ final class ForgeRegressionTests: XCTestCase {
         for _ in 0..<100 where links.queried.isEmpty { try await Task.sleep(for: .milliseconds(20)) }
         XCTAssertEqual(links.queried, [call])
     }
+
+    /// The completion panel painted the window background with a divider above its footer, and selected rows in
+    /// the editor background — invisible over a transparent editor (Forge FD5). A `SuggestionPanelStyle` now
+    /// paints it; without one it keeps the default look.
+    @MainActor
+    func test_suggestionPanelFollowsItsStyle() throws {
+        let panel = SuggestionViewController()
+        _ = panel.view
+        XCTAssertEqual(panel.view.layer?.backgroundColor, NSColor.windowBackgroundColor.cgColor)
+        XCTAssertFalse(panel.previewView.dividerView.isHidden)
+
+        let style = SuggestionPanelStyle(
+            background: NSColor(srgbRed: 0.1, green: 0.1, blue: 0.2, alpha: 0.9),
+            selectedRowBackground: NSColor(srgbRed: 0.9, green: 0.2, blue: 0.6, alpha: 0.2), cornerRadius: 12)
+        var config = Mock.config()
+        config.appearance.suggestionPanelStyle = style
+        let controller = TextViewController(
+            string: "", language: .swift, configuration: config, cursorPositions: [], highlightProviders: [])
+        let model = SuggestionViewModel()
+        model.activeTextView = controller
+        panel.model = model
+        panel.styleView(using: controller)
+
+        XCTAssertEqual(panel.view.layer?.backgroundColor, style.background.cgColor)
+        XCTAssertEqual(panel.view.layer?.cornerRadius, 12)
+        XCTAssertEqual(panel.tintView.layer?.backgroundColor, .clear)
+        XCTAssertTrue(panel.previewView.dividerView.isHidden)
+        XCTAssertTrue(panel.previewView.materialView.isHidden)
+        let row = try XCTUnwrap(panel.tableView(panel.tableView, rowViewForRow: 0) as? CodeSuggestionRowView)
+        XCTAssertEqual(row.getSelectionColor?(), style.selectedRowBackground)
+    }
 }
 
 private final class LinkRecorder: JumpToDefinitionDelegate {
