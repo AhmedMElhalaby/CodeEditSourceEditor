@@ -81,6 +81,11 @@ public final class TreeSitterClient: HighlightProviding {
         /// The maximum length a query can be before it must be performed asynchronously.
         public static var maxSyncQueryLength: Int = 4096
 
+        /// Whether call captures (`function.call`, `function.method`, `method.call`) are highlighted, drawn with
+        /// ``EditorTheme/functionCalls`` (upper-case Swift-style calls with ``EditorTheme/types``). Off by default:
+        /// the captures stay unrecognised, as upstream, so the default highlighting is unchanged.
+        public static var highlightsCalls = false
+
         /// The number of characters to read in a read block.
         ///
         /// This has diminishing returns on the number of times the read block is called as this number gets large.

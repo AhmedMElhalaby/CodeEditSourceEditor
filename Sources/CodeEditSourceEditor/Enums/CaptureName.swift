@@ -33,6 +33,9 @@ public enum CaptureName: Int8, CaseIterable, Sendable {
     case variableBuiltin
     case keywordReturn
     case keywordFunction
+    /// A call site: `function.call`, `function.method` or `method.call`. Highlighted only when
+    /// ``TreeSitterClient/Constants/highlightsCalls`` is on.
+    case functionCall
 
     var alternate: CaptureName {
         switch self {
@@ -92,6 +95,8 @@ public enum CaptureName: Int8, CaseIterable, Sendable {
             return .keywordReturn
         case "keyword.function":
             return .keywordFunction
+        case "function.call", "function.method", "method.call":
+            return .functionCall
         default:
             return nil
         }
@@ -142,7 +147,23 @@ public enum CaptureName: Int8, CaseIterable, Sendable {
             return "keywordReturn"
         case .keywordFunction:
             return "keywordFunction"
+        case .functionCall:
+            return "functionCall"
         }
+    }
+}
+
+extension CaptureName {
+    /// The capture a highlight query's `name` is drawn with, or `nil` to leave the text unhighlighted.
+    ///
+    /// Call captures are opt-in (``TreeSitterClient/Constants/highlightsCalls``): grammars list them before broader
+    /// captures such as `@property`, so recognising them by default would recolour those ranges. A `function.call` on
+    /// an upper-case name (`HStack(...)`, a Swift initialiser) is drawn as a type, the grammar's own `^[A-Z]` rule.
+    static func forHighlight(_ name: String?, text: () -> String?) -> CaptureName? {
+        let capture = fromString(name)
+        guard capture == .functionCall else { return capture }
+        guard TreeSitterClient.Constants.highlightsCalls else { return nil }
+        return name == "function.call" && text()?.first?.isUppercase == true ? .type : .functionCall
     }
 }
 
