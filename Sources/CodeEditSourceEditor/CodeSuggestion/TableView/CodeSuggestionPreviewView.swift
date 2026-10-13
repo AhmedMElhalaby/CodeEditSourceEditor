@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-final class CodeSuggestionPreviewView: NSVisualEffectView {
+final class CodeSuggestionPreviewView: NSView {
     private let spacing: CGFloat = 5
 
     var sourcePreview: NSAttributedString? {
@@ -48,6 +48,15 @@ final class CodeSuggestionPreviewView: NSVisualEffectView {
         }
     }
 
+    /// A ``SuggestionPanelStyle`` fills the whole panel: no material of its own and no divider.
+    var isStyled: Bool = false {
+        didSet {
+            materialView.isHidden = isStyled
+            dividerView.isHidden = isStyled
+        }
+    }
+
+    var materialView: NSVisualEffectView = NSVisualEffectView()
     var stackView: NSStackView = NSStackView()
     var dividerView: NSView = NSView()
     var sourcePreviewLabel: NSTextField = NSTextField()
@@ -56,6 +65,11 @@ final class CodeSuggestionPreviewView: NSVisualEffectView {
 
     init() {
         super.init(frame: .zero)
+        materialView.translatesAutoresizingMaskIntoConstraints = false
+        materialView.material = .windowBackground
+        materialView.blendingMode = .behindWindow
+        addSubview(materialView)
+
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.spacing = spacing
         stackView.orientation = .vertical
@@ -68,9 +82,6 @@ final class CodeSuggestionPreviewView: NSVisualEffectView {
         dividerView.wantsLayer = true
         dividerView.layer?.backgroundColor = NSColor.separatorColor.cgColor
         addSubview(dividerView)
-
-        self.material = .windowBackground
-        self.blendingMode = .behindWindow
 
         styleStaticLabel(sourcePreviewLabel)
         styleStaticLabel(documentationLabel)
@@ -85,6 +96,11 @@ final class CodeSuggestionPreviewView: NSVisualEffectView {
         stackView.addArrangedSubview(pathComponentsLabel)
 
         NSLayoutConstraint.activate([
+            materialView.topAnchor.constraint(equalTo: topAnchor),
+            materialView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            materialView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            materialView.trailingAnchor.constraint(equalTo: trailingAnchor),
+
             dividerView.topAnchor.constraint(equalTo: topAnchor),
             dividerView.leadingAnchor.constraint(equalTo: leadingAnchor),
             dividerView.trailingAnchor.constraint(equalTo: trailingAnchor),
