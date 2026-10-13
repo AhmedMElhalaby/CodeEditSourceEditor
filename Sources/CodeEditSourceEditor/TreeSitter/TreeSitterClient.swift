@@ -219,7 +219,12 @@ public final class TreeSitterClient: HighlightProviding {
         completion: @escaping @MainActor (Result<[HighlightRange], Error>) -> Void
     ) {
         let operation = { [weak self] in
-            return (self?.queryHighlightsForRange(range: range) ?? []).sorted { $0.range.location < $1.range.location }
+            // Earliest start first; on a tie the longer (outer) range first, so a nested highlight that starts
+            // with its container (a string's quote vs the whole literal) never wins by sort order alone.
+            return (self?.queryHighlightsForRange(range: range) ?? []).sorted {
+                $0.range.location != $1.range.location
+                    ? $0.range.location < $1.range.location : $0.range.length > $1.range.length
+            }
         }
 
         let longQuery = range.length > Constants.maxSyncQueryLength
