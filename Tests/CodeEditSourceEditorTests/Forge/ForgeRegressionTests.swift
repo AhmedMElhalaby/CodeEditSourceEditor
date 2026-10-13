@@ -62,4 +62,41 @@ final class ForgeRegressionTests: XCTestCase {
         let minimap = MinimapView(textView: Mock.textView(), theme: theme)
         minimap.setTheme(theme)
     }
+
+    /// A ⌘-click with no ⌘-hover before it (the editor had no focus) jumped nowhere: only a hovered range was
+    /// ever jumped from (Forge FD24). The click itself now resolves the identifier under it.
+    @MainActor
+    func test_commandClickWithoutHoverJumpsFromTheIdentifierUnderTheClick() async throws {
+        let controller = TextViewController(
+            string: "func greet() {}\ngreet()\n", language: .swift, configuration: Mock.config(),
+            cursorPositions: [], highlightProviders: [TreeSitterClient()])
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 400), styleMask: .borderless, backing: .buffered,
+            defer: false)
+        window.contentViewController = controller
+        controller.view.layoutSubtreeIfNeeded()
+        controller.textView.layoutManager.layoutLines()
+        let links = LinkRecorder()
+        controller.jumpToDefinitionDelegate = links
+        let client = try XCTUnwrap(controller.treeSitterClient)
+        while client.state == nil { try await Task.sleep(for: .milliseconds(50)) }
+
+        let call = NSRange(location: 16, length: 5)  // `greet` on line 2
+        let textView = try XCTUnwrap(controller.textView)
+        let rect = try XCTUnwrap(textView.layoutManager.rectsFor(range: call).first)
+        XCTAssertNotNil(controller.jumpToDefinitionModel.treeSitterClient, "the model must get the controller's client")
+        controller.jumpToDefinitionModel.jump(atWindowPoint: textView.convert(CGPoint(x: rect.midX, y: rect.midY), to: nil))
+
+        for _ in 0..<100 where links.queried.isEmpty { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(links.queried, [call])
+    }
+}
+
+private final class LinkRecorder: JumpToDefinitionDelegate {
+    var queried: [NSRange] = []
+    func queryLinks(forRange range: NSRange, textView: TextViewController) async -> [JumpToDefinitionLink]? {
+        queried.append(range)
+        return nil
+    }
+    func openLink(link: JumpToDefinitionLink) {}
 }
