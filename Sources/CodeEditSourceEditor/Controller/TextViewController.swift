@@ -254,6 +254,9 @@ public class TextViewController: NSViewController {
         if let idx = highlightProviders.firstIndex(where: { $0 is TreeSitterClient }),
            let client = highlightProviders[idx] as? TreeSitterClient {
             self.treeSitterClient = client
+            // `didSet` doesn't run inside init, so the model would never get the client: ⌘-hover found no
+            // identifier and ⌘-click never jumped (Forge FD24).
+            jumpToDefinitionModel.treeSitterClient = client
         }
 
         self.textView = SourceEditorTextView(

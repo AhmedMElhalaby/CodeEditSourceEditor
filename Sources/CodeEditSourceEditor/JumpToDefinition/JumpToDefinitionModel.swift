@@ -88,6 +88,21 @@ final class JumpToDefinitionModel {
         }
     }
 
+    /// A ⌘-click that came without a hovered range: finds the identifier under `point` (window coordinates) and
+    /// jumps from it. Nothing happens off an identifier, so ⌘-click elsewhere still just adds a cursor.
+    func jump(atWindowPoint point: CGPoint) {
+        guard delegate != nil, let textView,
+              let location = textView.layoutManager.textOffsetAtPoint(textView.convert(point, from: nil)),
+              location < textView.textStorage.length else {
+            return
+        }
+        hoverRequestTask?.cancel()
+        hoverRequestTask = Task {
+            guard let range = await findDefinitionRange(at: location), !Task.isCancelled else { return }
+            performJump(at: range)
+        }
+    }
+
     // MARK: - Link Popover
 
     private func presentLinkPopover(on range: NSRange, links: [JumpToDefinitionLink]) {

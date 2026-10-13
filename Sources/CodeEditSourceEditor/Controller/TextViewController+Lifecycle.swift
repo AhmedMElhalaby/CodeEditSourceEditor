@@ -237,6 +237,11 @@ extension TextViewController {
                 self.jumpToDefinitionModel.performJump(at: range)
                 return nil
             }
+            // Forge FD24: a ⌘-click with no ⌘-hover first (the editor had no focus, or the pointer never moved
+            // with ⌘ held) found nothing to jump to. Resolve the symbol under the click instead.
+            if modifierFlags.contains(.command) {
+                self.jumpToDefinitionModel.jump(atWindowPoint: event.locationInWindow)
+            }
             return event
         default:
             return event
