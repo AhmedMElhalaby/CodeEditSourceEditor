@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AhmedMElhalaby/CodeEditTextView.git",
       "state" : {
-        "revision" : "b6fe80863b3c8ec620d92994e548a4b8a54d3d37",
-        "version" : "0.12.1-forge.4"
+        "revision" : "3bcf00134295e77755bd501c8a002282a8e59bd0",
+        "version" : "0.12.1-forge.5"
       }
     },
     {
