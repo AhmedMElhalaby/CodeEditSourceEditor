@@ -1,5 +1,5 @@
 import XCTest
-import CodeEditTextView
+@testable import CodeEditTextView
 @testable import CodeEditSourceEditor
 
 /// Regressions found by Ainkrad Forge's E1 spike.
@@ -120,6 +120,26 @@ final class ForgeRegressionTests: XCTestCase {
         XCTAssertTrue(panel.previewView.materialView.isHidden)
         let row = try XCTUnwrap(panel.tableView(panel.tableView, rowViewForRow: 0) as? CodeSuggestionRowView)
         XCTAssertEqual(row.getSelectionColor?(), style.selectedRowBackground)
+    }
+
+    /// The minimap measured a wrapped row's offsets from its CTLine's location (the row's start in the line), not
+    /// from the row itself, so a selection on any row after the first drew left of the minimap (Forge FD64).
+    @MainActor
+    func test_minimapXPositionOnAWrappedRowCountsFromTheRow() throws {
+        let line = TextLine()
+        let text = NSTextStorage(string: String(repeating: "let value = 1; ", count: 20))
+        line.prepareForDisplay(
+            displayData: TextLine.DisplayData(maxWidth: 200, lineHeightMultiplier: 1, estimatedLineHeight: 15),
+            range: NSRange(location: 0, length: text.length),
+            stringRef: text,
+            markedRanges: nil,
+            attachments: []
+        )
+        let rows = Array(line.lineFragments)
+        XCTAssertGreaterThan(rows.count, 2)
+        let renderer = MinimapLineRenderer(textView: Mock.textView())
+        XCTAssertEqual(renderer.characterXPosition(in: rows[2].data, for: 0), 8)
+        XCTAssertEqual(renderer.characterXPosition(in: rows[2].data, for: 4), 8 + 4 * 1.5)
     }
 }
 

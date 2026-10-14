@@ -61,11 +61,12 @@ final class MinimapLineRenderer: TextLayoutManagerRenderDelegate {
     }
 
     func characterXPosition(in lineFragment: LineFragment, for offset: Int) -> CGFloat {
-        // Offset is relative to the whole line, the CTLine is too.
+        // Offset is relative to the fragment, as `MinimapLineFragmentView` draws it. The CTLine's string location
+        // is the fragment's start in the line, so subtracting it put wrapped rows left of the minimap (Forge FD64).
         guard let content = lineFragment.contents.first else { return 0.0 }
         switch content.data {
-        case .text(let ctLine):
-            return 8 + (CGFloat(offset - CTLineGetStringRange(ctLine).location) * 1.5)
+        case .text:
+            return 8 + (CGFloat(offset) * 1.5)
         case .attachment:
             return 0.0
         }
